@@ -1,3 +1,13 @@
+# import packages
+import sys
+import time
+
+# add path
+sys.path.append('../code_solver')
+
+# import self-written auxiliary functions
+from Daily_Spectral_Portfolios_Nonoverlap import Daily_Spectral_Portfolios_Nonoverlap
+
 # Run cases
 rerun = 1
 filesuffix = str(int(time.time() * 10000)).zfill(9)
@@ -41,7 +51,7 @@ for rr in range(len(rollwinlist)):
                             filename = filelist[ff]
                             writefile = f'Results_{filename}_{filesuffix}'
 
-                            filetmp = f'./Data/Results/{writefile}.txt'
+                            filetmp = f'../data/Results/{writefile}.txt'
                             with open(filetmp, 'r') as f:
                                 data = f.readlines()
 
@@ -166,7 +176,7 @@ for rr in range(len(rollwinlist)):
                                 (np.array(Stype) == Stypelist[s])
                             )[0]
 
-                            figdir = './Figures/'
+                            figdir = '../figures/'
 
                             # Sharpe and info ratios
                             bardata = np.vstack(

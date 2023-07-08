@@ -1,7 +1,11 @@
 
 # import packages
+import sys
 import numpy as np
 import matplotlib.pyplot as plt
+
+# add path
+sys.path.append('../code_solver')
 
 # import self-written auxiliary functions
 from Daily_Spectral_Portfolios_Nonoverlap import Daily_Spectral_Portfolios_Nonoverlap
