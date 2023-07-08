@@ -1,12 +1,16 @@
 # import packages
 import sys
 import time
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
 
 # add path
 sys.path.append('../code_solver')
 
 # import self-written auxiliary functions
 from Daily_Spectral_Portfolios_Nonoverlap import Daily_Spectral_Portfolios_Nonoverlap
+from errorbargrouped import errorbargrouped
 
 # Run cases
 rerun = 1
@@ -33,7 +37,7 @@ if rerun == 1:
                             for nn in range(len(Neiglist)):
                                 for ff in range(len(filelist)):
                                     filename = filelist[ff]
-                                    writefile = f'Results_{filename}_{filesuffix}'
+                                    writefile = [f'Results_{filename}_{filesuffix}']
                                     Daily_Spectral_Portfolios_Nonoverlap(
                                         filename, rollwinlist[rr], momwinlist[mm], fwdwinlist[f],
                                         samplist[m][0], samplist[m][1], cntrlist[c], Stypelist[s],
@@ -174,37 +178,47 @@ for rr in range(len(rollwinlist)):
                                 (np.array(maxyr) == samplist[m][1]) &
                                 (np.array(cntr) == cntrlist[c]) &
                                 (np.array(Stype) == Stypelist[s])
-                            )[0]
+                            )[0][0]
 
                             figdir = '../figures/'
 
                             # Sharpe and info ratios
-                            bardata = np.vstack(
-                                [PPSR[caseloc, 0], PEPposSR[caseloc, 0], PAPSR[caseloc, 0], PEPPAPSR[caseloc, 0], FtilSR[caseloc, 0]],
-                                [PPIR[caseloc, 0], PEPposIR[caseloc, 0], PAPIR[caseloc, 0], PEPPAPIR[caseloc, 0], 0]
-                            ).T
-                            barse = np.vstack(
-                                [PPSRse[caseloc, 0], PEPposSRse[caseloc, 0], PAPSRse[caseloc, 0], PEPPAPSRse[caseloc, 0], FtilSRse[caseloc, 0]],
-                                [PPIRse[caseloc, 0], PEPposIRse[caseloc, 0], PAPIRse[caseloc, 0], PEPPAPIRse[caseloc, 0], 0]
-                            ).T
+                            bardata = np.vstack((
+                                [PPSR[caseloc], PEPposSR[caseloc], PAPSR[caseloc], PEPPAPSR[caseloc], FtilSR[caseloc]],
+                                [PPIR[caseloc], PEPposIR[caseloc], PAPIR[caseloc], PEPPAPIR[caseloc], 0]
+                            ))
+                            barse = np.vstack((
+                                [PPSRse[caseloc], PEPposSRse[caseloc], PAPSRse[caseloc], PEPPAPSRse[caseloc], FtilSRse[caseloc]],
+                                [PPIRse[caseloc], PEPposIRse[caseloc], PAPIRse[caseloc], PEPPAPIRse[caseloc], 0]
+                            ))
 
                             b = errorbargrouped(bardata, barse, 2)
-                            b[4].set_facecolor('none')
-                            b[4].set_edgecolor('black')
-                            b[4].set_hatch('//')
-                            b[4].set_linewidth(0)
-                            b[4].set_label('Factor')
 
-                            plt.xticks([1, 2], ['Sharpe Ratio', 'Information Ratio'])
-                            plt.xlabel('Forecast Horizon (Days)')
-                            plt.gca().set_ylabel('Ratio')
-                            plt.gca().set_title('Sharpe and Information Ratios')
-                            plt.gca().set_xticklabels(['Sharpe Ratio', 'Information Ratio'])
-                            plt.gca().spines['right'].set_visible(False)
-                            plt.gca().spines['top'].set_visible(False)
-                            plt.gca().tick_params(axis='both', which='both', length=0)
-                            plt.gca().legend()
+                            plt.xticks([0, 1], ['Sharpe Ratio', 'Information Ratio'])
+                           
+                            # Set font properties
+                            plt.rcParams['font.family'] = 'Times New Roman'
+                            plt.rcParams['font.size'] = 20
 
-                            plt.gcf().set_size_inches(12.8, 10)
-                            plt.savefig(figdir + 'Figure3.eps', format='eps')
-                            plt.close()
+                            # Set figure size
+                            plt.rcParams['figure.figsize'] = [1280, 1000]
+
+                            # Add legend
+                            bar_colors =[
+                                (0, 0.4470, 0.7410),   # Blue
+                                (0.8500, 0.3250, 0.0980),   # Orange
+                                (0.9290, 0.6940, 0.1250),   # Yellow
+                                (0.4940, 0.1840, 0.5560),   # Purple
+                                (0.5, 0.5, 0.5),   # Grey
+                            ]
+
+                            # Add legend
+                            legend_handles = [Patch(facecolor=color) for color in bar_colors]
+                            legend_labels = ['PP 1-3', 'PEP 1-3', 'PAP 1-3', 'PEP and PAP 1-3', 'Factor']
+                            b.gca().legend(legend_handles, legend_labels, prop={'size': 15})
+
+                            # Save the figure
+                            b.savefig(figdir + 'Figure3.jpg', dpi = 300)
+
+                            # Close the plot
+                            plt.close(b)
