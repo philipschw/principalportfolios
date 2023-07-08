@@ -2,15 +2,28 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def errorbargrouped(data, err, numSE, *args):
+def errorbargrouped(data: np.ndarray, err: np.ndarray, numSE: float, *args) -> plt.Figure:
+    """
+    Create a grouped bar plot with error bars.
+
+    :param data: The data matrix of shape (ngroups, nbars).
+    :type data: numpy.ndarray
+    :param err: The error matrix of shape (ngroups, nbars).
+    :type err: numpy.ndarray
+    :param numSE: Number of standard errors for error bars.
+    :type numSE: float
+    :param *args: Additional arguments.
+    :return: The generated matplotlib Figure object.
+    :rtype: matplotlib.figureFigure
+    """
 
     # Create a figure and axes object
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12.8,10))
 
     # Determine the number of groups and bars in each group
     ngroups, nbars = data.shape
 
-    # Check if colors where provided, otherwhise use the default color cycle
+    # Use matlab colors
     colors = [
         (0, 0.4470, 0.7410),   # Blue
         (0.8500, 0.3250, 0.0980),   # Orange

@@ -3,6 +3,7 @@
 import numpy as np
 import scipy.io as sio
 from typing import List
+from tqdm import tqdm
 
 # import self-written auxiliary functions
 from rankstdize import rankstdize
@@ -193,7 +194,8 @@ def Daily_Spectral_Portfolios_Nonoverlap(
     Wsym = [np.full((N, N), np.nan)] * Tno
     Wasym = [np.full((N, N // 2), np.nan)] * Tno
 
-    for tau in range(rollwin, Tno):
+    print("Build Principal Portfolios")
+    for tau in tqdm(range(rollwin, Tno)):
 
         # Carve out training data
         Rtrn = Rtrnslc[tau-1]
@@ -230,9 +232,6 @@ def Daily_Spectral_Portfolios_Nonoverlap(
         Wfull2[tau] = W2
         Wsym[tau] = Ws
         Wasym[tau] = Wa
-
-        if tau % 100 == 0:
-            print(tau)
 
     # Save results to file
     datafile = f'../data/Results/{filename.replace(".npz", "")}-rollwin-{rollwin}-momwin-{momwin}-fwdwin-{fwdwin}-center-{cntr}-{Stype}-nonoverlap'

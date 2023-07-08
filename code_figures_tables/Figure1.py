@@ -1,3 +1,7 @@
+# This script creates Figure 1.
+
+# Start notice
+print("Start Script")
 
 # import packages
 import sys
@@ -41,6 +45,7 @@ if rerun == 1:
             Neig
         )
 
+print("Create Plots")
 # Plot returns and eigenvalues for FF 25
 
 # Load estimates
@@ -155,3 +160,5 @@ plt.tick_params(axis='both', which='major', labelsize=20)
 plt.gcf().set_size_inches(9, 10)
 plt.savefig(figdir + 'Figure1c.jpg')
 plt.close()
+
+print("End Script")

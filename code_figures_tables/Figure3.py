@@ -1,3 +1,8 @@
+# This script creates Figure 3.
+
+# Start notice
+print("Start Script")
+
 # import packages
 import sys
 import time
@@ -45,6 +50,7 @@ if rerun == 1:
                                     )
 
 # Collect cases
+print("Create Plots")
 for rr in range(len(rollwinlist)):
     for mm in range(len(momwinlist)):
         for m in range(len(samplist)):
@@ -201,7 +207,7 @@ for rr in range(len(rollwinlist)):
                             plt.rcParams['font.size'] = 20
 
                             # Set figure size
-                            plt.rcParams['figure.figsize'] = [1280, 1000]
+                            #plt.rcParams['figure.figsize'] = [2000, 1000]
 
                             # Add legend
                             bar_colors =[
@@ -222,3 +228,6 @@ for rr in range(len(rollwinlist)):
 
                             # Close the plot
                             plt.close(b)
+
+# End notice
+print("End Script")
