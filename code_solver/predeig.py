@@ -23,33 +23,27 @@ def predeig(R, S) -> tuple:
 
     # SigmaRS and its sym/asym parts
     T, N = R.shape
-    Pi = np.dot(R.T, S) / T
+    Pi = np.dot(R.T, S / T)
     Pis = 0.5 * (Pi + Pi.T)
     Pia = 0.5 * (Pi - Pi.T) * 1j
 
     # Total Pi
-    D1, W1 = np.linalg.eig(Pi.T @ Pi)
+    D1, W1 = np.linalg.eig(np.dot(Pi.T, Pi))
+    D1 = np.flipud(np.sqrt(np.abs(D1)))
     W1 = np.fliplr(W1)
-    D1 = np.diag(np.flip(np.sqrt(np.abs(D1))))
-    W2 = Pi @ W1 @ np.linalg.inv(D1)
-    D = np.diag(D1)
-    D = np.flipud(D)
+    W2 = np.dot(Pi, W1) @ np.linalg.inv(np.diag(D1))
+    D = np.flipud(D1)
     W1 = np.fliplr(W1)
     W2 = np.fliplr(W2)
 
     # Symmetric component
     Dsym, Wsym = np.linalg.eig(Pis)
-    Dsym, Wsym = zip(*sorted(zip(Dsym, Wsym.T), key=lambda x: -x[0]))
-    Dsym = np.array(Dsym)
-    Wsym = np.matrix(Wsym).T
 
     # Asymmetric component
     Dasym, Wasym = np.linalg.eig(Pia)
-    sort = np.argsort(Dasym).tolist()
-    Dasym = Dasym[sort]
-    Wasym = Wasym[:, sort]
-    idx = [i for i in range(N-1, N // 2, -1)]
-    Dasym = Dasym[idx]
-    Wasym = Wasym[:, idx]
+    ix = np.argsort(Dasym)[::-1]
+    ix = ix[:N//2]
+    Dasym = Dasym[ix]
+    Wasym = Wasym[:, ix]
 
     return W1, W2, D, Wsym, Dsym, Wasym, Dasym

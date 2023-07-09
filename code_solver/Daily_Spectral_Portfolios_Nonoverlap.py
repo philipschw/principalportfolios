@@ -4,6 +4,7 @@ import numpy as np
 import scipy.io as sio
 from typing import List
 from tqdm import tqdm
+import warnings
 
 # import self-written auxiliary functions
 from rankstdize import rankstdize
@@ -11,8 +12,8 @@ from specptfs import specptfs
 from perform_eval import perform_eval
 
 # turn off certain warnings
-np.warnings.filterwarnings('ignore', category=np.ComplexWarning)
-np.warnings.filterwarnings('ignore', category=RuntimeWarning)
+warnings.filterwarnings('ignore', category=np.ComplexWarning)
+warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 def Daily_Spectral_Portfolios_Nonoverlap(
     filename: str,
