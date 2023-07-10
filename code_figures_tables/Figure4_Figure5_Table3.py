@@ -21,10 +21,10 @@ Neig = 10
 
 # Load data
 dataname = 'HML-Intl-Factors'
-figdir = './figures/'
+figdir = '../figures/'
 
 # Read signals data
-data = pd.read_csv('./data/hml_signals_us.csv', delimiter=',')
+data = pd.read_csv('../data/hml_signals_us.csv', delimiter=',')
 siglist = data.columns[3:]
 ptfid = data.iloc[:, 1].to_numpy()
 dates = data.iloc[:, 2]
@@ -35,7 +35,7 @@ idlist = np.unique(ptfid)
 datelist = np.unique(dates)
 
 # Read returns data
-data = pd.read_csv('./data/hml_us.csv', delimiter=',')
+data = pd.read_csv('../data/hml_us.csv', delimiter=',')
 retvwcap = data["ret_vw_cap"].to_numpy()
 
 del data, tmp
@@ -56,8 +56,8 @@ del ptfid, retvwcap, signals, dates, siglist
 
 # Restrict by coverage
 if mincov == 1:
-    coverage = sio.loadmat('./data/ipcainit_153_coverage.mat')["coverage"].squeeze()
-    coveragename = np.genfromtxt("./data/coveragename.csv", delimiter=',', encoding=None, dtype=None)
+    coverage = sio.loadmat('../data/ipcainit_153_coverage.mat')["coverage"].squeeze()
+    coveragename = np.genfromtxt("../data/coveragename.csv", delimiter=',', encoding=None, dtype=None)
     loc = np.where(coverage > 0.8)[0]
     covlist = coveragename[loc]
     loc = np.where(np.isin(idlist, covlist))[0]
@@ -99,7 +99,7 @@ N = R.shape[1]
 labs = idlist
 
 # Load/merge Fama-French factor data for benchmarking
-ffdata = sio.loadmat('./Data/ff5monthly.mat')
+ffdata = sio.loadmat('../data/ff5monthly.mat')
 fffac = ffdata["fffac"]
 ffdates = ffdata["ffdates"]
 fffactmp = np.full((T, 5), np.nan)
