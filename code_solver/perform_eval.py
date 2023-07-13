@@ -1,6 +1,6 @@
 # import packages
 import numpy as np
-from scipy.linalg import lstsq
+import statsmodels.api as sm
 
 def perform_eval(testassets, benchmark, yearfrac) -> tuple:
     """
@@ -19,47 +19,42 @@ def perform_eval(testassets, benchmark, yearfrac) -> tuple:
     - `IRse` stands for Standard Error of Information Ratio.
     """
     
-    N = testassets.shape[1]
+    N = testassets.shape[1] if len(testassets.shape) > 1 else 1
     SR = np.full((N, 1), np.nan)
     SRse = np.full((N, 1), np.nan)
     IR = np.full((N, 1), np.nan)
     IRse = np.full((N, 1), np.nan)
 
     for j in range(N):
-        ptf = testassets[:, j]
+        ptf = testassets[:, j] if len(testassets.shape) > 1 else testassets
         TT = np.sum(~np.isnan(ptf))
 
         # ER, SR
         SR[j] = sharpe(ptf) * np.sqrt(1 / yearfrac)
-        SRse[j] = np.sqrt(1 / yearfrac) * np.sqrt((1 + 0.5 * (SR[j] / np.sqrt(1 / yearfrac)) ** 2) / TT)
+        SRse[j] = np.sqrt(1 / yearfrac) * np.sqrt((1 + 0.5 * np.power(SR[j] / np.sqrt(1 / yearfrac), 2)) / TT)
 
         # Alpha wrt own-factor and FF5
         if len(benchmark) != 0:
-            # Combine X and y into a single matrix
-            Xy = np.column_stack((benchmark, np.atleast_2d(ptf).T))
-            
-            # Remove rows with NaN values
-            Xy = Xy[~np.isnan(Xy).any(axis=1)]
+            # Combine ptf and benchmark into a single matrix
+            data = np.hstack((ptf.reshape(-1,1), benchmark))
 
-            # Separate X and y after removing NaN values
-            X = Xy[:, :-1]
-            y = Xy[:, -1]
+            # Drop rows with NaN values
+            data_clean = data[~np.isnan(data).any(axis=1)]
 
-            # Add a column of ones to X for the intercept term
-            X_with_intercept = np.column_stack((np.ones((X.shape[0], 1)), X))
+            # Separate the ptf and benchmark columns
+            ptf = data_clean[:, 0]
+            benchmark_clean = data_clean[:, 1:]
 
-            # Perform least squares regression
-            coefficients, _, _, _ = lstsq(X_with_intercept, y, lapack_driver='gelsd')
+            # Perform linear regression
+            model = sm.OLS(ptf, sm.add_constant(benchmark_clean))
+            results = model.fit()
 
-            y_predicted = np.dot(X_with_intercept, coefficients)
+            # Extract the alpha and correlation coefficient
+            alpha = results.params[0]
+            r = results.resid
 
-            # Calculate residuals
-            residuals = y - y_predicted
-
-            # Calculate information ratio
-            alpha = coefficients[0] + residuals
-            IR[j] = sharpe(alpha) * np.sqrt(1 / yearfrac)
-            IRse[j] = np.sqrt(1 / yearfrac) * np.sqrt((1 + 0.5 * (IR[j] / np.sqrt(1 / yearfrac)) ** 2) / TT)
+            IR[j] = sharpe(alpha + r) * np.sqrt(1 / yearfrac)
+            IRse[j] = np.sqrt(1 / yearfrac) * np.sqrt((1 + 0.5 * np.power(IR[j] / np.sqrt(1 / yearfrac), 2)) / TT)
 
     return SR, SRse, IR, IRse
 
@@ -79,4 +74,4 @@ def sharpe(returns):
     - The Sharpe Ratio is calculated using the formula: average return / standard deviation of returns (with degrees of freedom = 1).
     """
 
-    return np.nanmean(returns) / np.nanstd(returns, ddof=1)
+    return np.nanmean(returns) / np.nanstd(returns, ddof=0)
