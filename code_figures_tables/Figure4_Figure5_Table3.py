@@ -42,7 +42,6 @@ savedata = 0
 loaddata = 0
 
 # Load data
-dataname = 'HML-Intl-Factors'
 figdir = '../figures/'
 
 # Read signals data
