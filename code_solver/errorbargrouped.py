@@ -55,6 +55,13 @@ def errorbargrouped(data: np.ndarray, err: np.ndarray, numSE: float, *args) -> p
             # Add error bars using the error values
             ax.errorbar(j + x_offset, data[j, i], yerr=numSE * err[j, i], fmt='none', color='black', capsize=2, linewidth=1)
 
+            # Add values on top of each bar
+            if args and args[0]:
+                if data[j, i] >= 0:
+                    ax.text(j + x_offset, data[j, i], f'{data[j, i]:.2f}', ha='center', va='bottom', fontsize=10)
+                else:
+                    ax.text(j + x_offset, data[j, i], f'{data[j, i]:.2f}', ha='center', va='top', fontsize=10)
+
 
     # Set x-axis ticks and labels
     plt.xticks(range(ngroups), list(range(ngroups)))

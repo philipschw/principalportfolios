@@ -74,4 +74,4 @@ def sharpe(returns):
     - The Sharpe Ratio is calculated using the formula: average return / standard deviation of returns (with degrees of freedom = 1).
     """
 
-    return np.nanmean(returns) / np.nanstd(returns, ddof=0)
+    return np.nanmean(returns) / np.nanstd(returns, ddof=1)

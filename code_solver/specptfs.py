@@ -2,7 +2,7 @@
 import numpy as np
 
 # import self-written auxiliary functions
-from .predeig import predeig
+from predeig import predeig
 
 def specptfs(R, S, Roos, Soos):
     """
@@ -63,10 +63,10 @@ def specptfs(R, S, Roos, Soos):
         ws = Wsym[:, k]
         Sws = np.dot(Soos, ws)
         Rws = np.dot(Roos, ws)
-        PEP[k] = Sws * Rws
+        PEP[k] = Sws.real * Rws.real
     
     # Pia: Principal alpha portfolios
-    PAP = np.full((1, Roos.shape[0]//2), np.nan)
+    PAP = np.full(len(Roos) //2, np.nan)
     for k in range(N // 2):
         wa1 = np.real(Wasym[:, k])
         wa2 = np.imag(Wasym[:, k])
@@ -74,6 +74,6 @@ def specptfs(R, S, Roos, Soos):
         Swa2 = np.dot(Soos, wa2)
         Rwa1 = np.dot(Roos, wa1)
         Rwa2 = np.dot(Roos, wa2)
-        PAP[:, k] = Swa1 * Rwa2 - Swa2 * Rwa1
+        PAP[k] = Swa1 * Rwa2 - Swa2 * Rwa1
     
     return Wfull1, Wfull2, Dfull, Wsym, Dsym, Wasym, Dasym, PP, PEP, PAP

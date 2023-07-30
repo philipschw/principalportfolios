@@ -1,13 +1,33 @@
+# This script creates Figure 4, Figure 5 and Table 3.
+
+# Start notice
+print("Start Script")
+
+# import packages
+import sys
 import numpy as np
 import pandas as pd
 import scipy.io as sio
-from tqdm import tqdm
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 from scipy import stats
-from code_solver.expsmoother import expsmoother
-from code_solver.rankstdize import rankstdize
-from code_solver.specptfs import specptfs
-from code_solver.perform_eval import sharpe, perform_eval
+from matplotlib.patches import Patch
+from tabulate import tabulate
+
+# add path
+sys.path.append('../code_solver')
+
+# import self-written auxiliary functions
+from expsmoother import expsmoother
+from rankstdize import rankstdize
+from specptfs import specptfs
+from perform_eval import sharpe, perform_eval
+from errorbargrouped import errorbargrouped
+from linreg import linreg
+
+# turn off certain warnings
+np.warnings.filterwarnings('ignore', category=np.ComplexWarning)
+np.warnings.filterwarnings('ignore', category=RuntimeWarning)
 
 # Choices
 minyr = 1963
@@ -18,6 +38,8 @@ volstd = 0
 mincov = 0
 rollwin = 120
 Neig = 10
+savedata = 0
+loaddata = 0
 
 # Load data
 dataname = 'HML-Intl-Factors'
@@ -92,6 +114,7 @@ T = len(datelist)
 loc = np.where(np.sum(np.isnan(R), axis=0) == 0)[0]
 R = R[:, loc]
 idlist = idlist[loc]
+Scell = [Scell[j] for j in loc]
 Scell = [Scell[i][:, loc] for i in range(len(Scell))]
 N = R.shape[1]
 
@@ -114,20 +137,22 @@ del ffdata, fffactmp, ffdates
 SR = np.full((N, 22), np.nan)
 PTFS = {}
 
-for sig in range(N):
+print("Build Principal Portfolios")
+for sig in tqdm(range(N), desc = "Loop over Signals"):
 
     # Slice data
     S = Scell[sig]
 
-    Rtrnslc = {}
-    Strnslc = {}
-    Rtstslc = {}
-    Ststslc = {}
-    for tau in range(rollwin, T - 1):
-        Rtrnslc[tau] = R[tau - rollwin + 1:tau, :]
-        Strnslc[tau] = S[tau - rollwin + 1:tau, :]
-        Rtstslc[tau] = R[tau + 1, :]
-        Ststslc[tau] = S[tau + 1, :]
+    Rtrnslc = [[] for _ in range(rollwin-1)]
+    Strnslc = [[] for _ in range(rollwin-1)]
+    Rtstslc = [[] for _ in range(rollwin-1)]
+    Ststslc = [[] for _ in range(rollwin-1)]
+
+    for tau in range(rollwin, T):
+        Rtrnslc.append(R[tau - rollwin:tau, :])
+        Strnslc.append(S[tau - rollwin:tau, :])
+        Rtstslc.append(R[tau, :])
+        Ststslc.append(S[tau, :])
 
     Fhis = np.full(T, np.nan)
     Fhks = np.full(T, np.nan)
@@ -137,7 +162,9 @@ for sig in range(N):
     PEP = np.full((T, N), np.nan)
     PAP = np.full((T, N // 2), np.nan)
 
-    for tau in tqdm(range(rollwin, T - 1)):
+    for tau in tqdm(range(rollwin, T-1), desc = "Loop over Time", leave=False):
+
+        # Carve out training data
         Rtrn = Rtrnslc[tau]
         Strn = Strnslc[tau]
         loc1 = np.where(~np.isnan(np.sum(Rtrn + Strn, axis=1)))[0]
@@ -146,13 +173,14 @@ for sig in range(N):
         Rtrn = Rtrn[loc1, :]
         Strn = Strn[loc1, :]
 
+        # Carve out test data
         Rtst = Rtstslc[tau]
         Stst = Ststslc[tau]
 
         # Rank-standardize signal
         if cntr == 1:
             Strn = rankstdize(Strn)
-            Stst = rankstdize(Stst)
+            Stst = rankstdize(np.atleast_2d(Stst))[0]
 
         # Time series de-mean signals (based on training mean)
         if tsdm == 1:
@@ -163,8 +191,8 @@ for sig in range(N):
 
         # Cross-section demean return (training data only)
         if cntr == 1:
-            Rtrn = (Rtrn.T - np.nanmean(Rtrn, axis=1)).T
-            Rtst = (Rtst.T - np.nanmean(Rtst, axis=1)).T
+            Rtrn = Rtrn - np.nanmean(Rtrn, axis=1)[:, np.newaxis]
+            Rtst = Rtst - np.nanmean(Rtst)
 
         Q, D, _ = np.linalg.svd(np.cov(Rtrn, rowvar=False))
         Rhkstrn = Rtrn @ Q
@@ -176,7 +204,7 @@ for sig in range(N):
             slope, intercept, r_value, p_value, std_err = stats.linregress(Shkstrn[:, qq], Rhkstrn[:, qq])
             Phks[qq] = np.dot([1, Shkstst[qq]], [intercept, slope])
 
-        Fhkscov = np.cov(Rhkstrn[:, :5], rowvar=False, ddof=0)
+        Fhkscov = np.cov(Rhkstrn[:, :5], rowvar=False, ddof=1)
         Fhks[tau + 1] = np.dot(Phks, np.linalg.solve(Fhkscov, Rhkstst[0:5]))
         Fhksnc[tau + 1] = np.sum(Rhkstst[:5] * Phks)
 
@@ -207,7 +235,17 @@ for sig in range(N):
     for j in range(22):
         SR_sig[j] = sharpe(re[:, j]) * np.sqrt(12)
     SR[sig, :] = SR_sig
-    print(f"Iteration {sig+1}/{N}")
+
+# Save results to file
+if savedata == 1:
+    np.savez("../data/Results/Figure4_Figure5_Table3.npz", PTFS=PTFS, SR=SR)
+
+#tmp: load data
+if loaddata == 1:
+    loaded_data = np.load("../data/Results/Figure4_Figure5_Table3.npz", allow_pickle=True)
+    PTFS = loaded_data['PTFS'].item()
+    SR = loaded_data['SR']
+    loaded_data.close()
 
 # Combined strategies (EW average of 1st PP for each variety)
 PP1ALL = np.full((T, N), np.nan)
@@ -235,6 +273,7 @@ Ftilew = np.nanmean(FtilALL, axis=1)
 Fhksew = np.nanmean(FhksALL, axis=1)
 Fhksncew = np.nanmean(FhksncALL, axis=1)
 
+print("Calculate Performance summaries")
 # Performance summaries
 Neig = 10
 
@@ -261,7 +300,7 @@ PPIRse = np.full((N, N), np.nan)
 PAPIRse = np.full((N, N//2), np.nan)
 PEPIRse = np.full((N, N), np.nan)
 
-for sig in range(N):
+for sig in tqdm(range(N), desc='Calculate Sharpe Ratios and Information Ratios'):
     TT = np.sum(~np.isnan(PTFS[0]["PP"][:, 0]))
 
     SR, SRse, IR, IRse = perform_eval(PTFS[sig]["Ftil"], [], 1 / 12)
@@ -342,66 +381,216 @@ PAPewSRse = SRse
 PAPewIR = IR
 PAPewIRse = IRse
 
+print("Build Figure 4")
 # Figure 4: Plots Average Sharpe ratios
-yrng = [np.nanmean(PEPSR[:, -1], axis=0) - 2 * np.nanmean(PEPSRse[:, 0], axis=0), np.nanmean(PAPSR[:, 0], axis=0) + 2 * np.nanmean(PAPSRse[:, 0], axis=0)]
 
 # Plot PP
-bardata = np.hstack([np.nanmean(PPSR[:, 0:Neig], axis=0).reshape(-1,1), np.nanmean(PPIR[:, 0:Neig], axis=0).reshape(-1,1)]).T
-barse = np.hstack([np.nanmean(PPSRse[:, 0:Neig], axis=0).reshape(-1,1), np.nanmean(PPIRse[:, 0:Neig], axis=0).reshape(-1,1)]).T
-fig, ax = plt.subplots(figsize=(12, 8))
-ax.set_ylim(yrng)
-for i in range(bardata.shape[0]):
-    ax.bar(np.arange(Neig) + i * 0.35, bardata[i], 0.35, yerr=barse[i], capsize=10)
-plt.xticks(np.arange(Neig) + 0.35 / 2, np.arange(Neig))
-plt.legend(['Sharpe Ratio', 'Information Ratio'])
-plt.savefig(figdir + 'Figure4a.jpg')
-plt.close()
+## Prepare data
+bardata = np.hstack([np.nanmean(PPSR[:, 0:Neig], axis=0).reshape(-1,1), np.nanmean(PPIR[:, 0:Neig], axis=0).reshape(-1,1)])
+barse = np.hstack([np.nanmean(PPSRse[:, 0:Neig], axis=0).reshape(-1,1), np.nanmean(PPIRse[:, 0:Neig], axis=0).reshape(-1,1)])
+
+## Plot bars
+b = errorbargrouped(bardata, barse, 2, True)
+
+## Set ticks
+plt.xticks(np.arange(Neig), np.arange(Neig)+1)
+
+## Set font properties
+plt.rcParams['font.family'] = 'Times New Roman'
+plt.rcParams['font.size'] = 20
+
+## Add legend
+bar_colors =[
+    (0, 0.4470, 0.7410),   # Blue
+    (0.8500, 0.3250, 0.0980),   # Orange
+]
+legend_handles = [Patch(facecolor=color) for color in bar_colors]
+legend_labels = ['Sharpe Ratio', 'Information Ratio']
+b.gca().legend(legend_handles, legend_labels, prop={'size': 15})
+
+## Save the figure
+b.savefig(figdir + 'Figure4a.jpg', dpi = 300)
+
+## Close the plot
+plt.close(b)
+
 
 # Plot PEP
+## Prepare data
 x = list(range(Neig//2)) + list(range(PEPSR.shape[1] - Neig//2, PEPSR.shape[1]))
-bardata = np.hstack([np.nanmean(PEPSR[:, x], axis=0).reshape(-1,1), np.nanmean(PEPIR[:, x], axis=0).reshape(-1,1)]).T
-barse = np.hstack([np.nanmean(PEPSRse[:, x], axis=0).reshape(-1,1), np.nanmean(PEPIRse[:, x], axis=0).reshape(-1,1)]).T
-fig, ax = plt.subplots(figsize=(12, 8))
-ax.set_ylim(yrng)
-for i in range(bardata.shape[0]):
-    ax.bar(np.arange(Neig) + i * 0.35, bardata[i], 0.35, yerr=barse[i], capsize=10)
-plt.xticks(np.arange(Neig) + 0.35 / 2, [str(l) for l in x])
-plt.legend(['Sharpe Ratio', 'Information Ratio'])
-plt.savefig(figdir + 'Figure4b.jpg')
-plt.close()
+bardata = np.hstack([np.nanmean(PEPSR[:, x], axis=0).reshape(-1,1), np.nanmean(PEPIR[:, x], axis=0).reshape(-1,1)])
+barse = np.hstack([np.nanmean(PEPSRse[:, x], axis=0).reshape(-1,1), np.nanmean(PEPIRse[:, x], axis=0).reshape(-1,1)])
+
+## Plot bars
+b = errorbargrouped(bardata, barse, 2, True)
+
+## Set ticks
+plt.xticks(np.arange(Neig), [str(l) for l in x])
+
+## Set font properties
+plt.rcParams['font.family'] = 'Times New Roman'
+plt.rcParams['font.size'] = 20
+
+## Add legend
+bar_colors =[
+    (0, 0.4470, 0.7410),   # Blue
+    (0.8500, 0.3250, 0.0980),   # Orange
+]
+legend_handles = [Patch(facecolor=color) for color in bar_colors]
+legend_labels = ['Sharpe Ratio', 'Information Ratio']
+b.gca().legend(legend_handles, legend_labels, prop={'size': 15})
+
+## Save the figure
+b.savefig(figdir + 'Figure4b.jpg', dpi = 300)
+
+## Close the plot
+plt.close(b)
+
 
 # Plot PAP
-bardata = np.hstack([np.nanmean(PAPSR[:, 0:Neig], axis=0).reshape(-1,1), np.nanmean(PAPIR[:, 0:Neig], axis=0).reshape(-1,1)]).T
-barse = np.hstack([np.nanmean(PAPSRse[:, 0:Neig], axis=0).reshape(-1,1), np.nanmean(PAPIRse[:, 0:Neig], axis=0).reshape(-1,1)]).T
-fig, ax = plt.subplots(figsize=(12, 8))
-ax.set_ylim(yrng)
-for i in range(bardata.shape[0]):
-    ax.bar(np.arange(Neig) + i * 0.35, bardata[i], 0.35, yerr=barse[i], capsize=10)
-plt.xticks(np.arange(Neig) + 0.35 / 2, np.arange(Neig))
-plt.legend(['Sharpe Ratio', 'Information Ratio'])
-plt.savefig(figdir + 'Figure4c.jpg')
-plt.close()
+## Prepare data
+bardata = np.hstack([np.nanmean(PAPSR[:, 0:Neig], axis=0).reshape(-1,1), np.nanmean(PAPIR[:, 0:Neig], axis=0).reshape(-1,1)])
+barse = np.hstack([np.nanmean(PAPSRse[:, 0:Neig], axis=0).reshape(-1,1), np.nanmean(PAPIRse[:, 0:Neig], axis=0).reshape(-1,1)])
+
+## Plot bars
+b = errorbargrouped(bardata, barse, 2, True)
+
+## Set ticks
+plt.xticks(np.arange(Neig), np.arange(Neig)+1)
+
+## Set font properties
+plt.rcParams['font.family'] = 'Times New Roman'
+plt.rcParams['font.size'] = 20
+
+## Add legend
+bar_colors =[
+    (0, 0.4470, 0.7410),   # Blue
+    (0.8500, 0.3250, 0.0980),   # Orange
+]
+legend_handles = [Patch(facecolor=color) for color in bar_colors]
+legend_labels = ['Sharpe Ratio', 'Information Ratio']
+b.gca().legend(legend_handles, legend_labels, prop={'size': 15})
+
+## Save the figure
+b.savefig(figdir + 'Figure4c.jpg', dpi = 300)
+
+## Close the plot
+plt.close(b)
+
 
 # Plot Factors
-bardata = [np.nanmean(FtilSR, axis=0), FhisSR[0][0]]
-barse = [np.nanmean(FtilSRse, axis=0), FhisSRse[0][0]]
-fig, ax = plt.subplots(figsize=(12, 8))
-ax.set_ylim(yrng)
-ax.bar(np.arange(2), bardata, yerr=barse, capsize=10)
-plt.xticks(np.arange(2), ['Factor', 'Hist. Mean Wts.'])
-plt.legend(['Sharpe Ratio'])
-plt.savefig(figdir + 'Figure4d.jpg')
-plt.close()
+## Prepare data
+bardata = np.matrix([np.nanmean(FtilSR, axis=0), FhisSR[0][0]]).T
+barse = np.matrix([np.nanmean(FtilSRse, axis=0), FhisSRse[0][0]]).T
 
+## Plot bars
+b = errorbargrouped(bardata, barse, 2, True)
+
+## Set ticks
+plt.xticks([0,1], ['Factor', 'Hist. Mean Wts.'])
+
+## Set font properties
+plt.rcParams['font.family'] = 'Times New Roman'
+plt.rcParams['font.size'] = 20
+
+## Add legend
+bar_colors =[
+    (0, 0.4470, 0.7410),   # Blue
+]
+legend_handles = [Patch(facecolor=color) for color in bar_colors]
+legend_labels = ['Sharpe Ratio']
+b.gca().legend(legend_handles, legend_labels, prop={'size': 15})
+
+## Save the figure
+b.savefig(figdir + 'Figure4d.jpg', dpi = 300)
+
+## Close the plot
+plt.close(b)
+
+
+print("Build Figure 5")
 # Figure 5: Comparison with HKS
+## Prepare data
 bardata = np.hstack([PPewSR, PEP1ewSR, PEPNewSR, PAPewSR, FhksewSR, FhksncewSR])
-bardata = np.vstack([bardata, np.hstack([PPewIR, PEP1ewIR, PEPNewIR, PAPewIR, FhksewIR, FhksncewIR])])
+bardata = np.vstack([bardata, np.hstack([PPewIR, PEP1ewIR, PEPNewIR, PAPewIR, FhksewIR, FhksncewIR])]).T
 barse = np.hstack([PPewSRse, PEP1ewSRse, PEPNewSRse, PAPewSRse, FhksewSRse, FhksncewSRse])
-barse = np.vstack([barse, np.hstack([PPewIRse, PEP1ewIRse, PEPNewIRse, PAPewIRse, FhksewIRse, FhksncewIRse])])
-fig, ax = plt.subplots(figsize=(12, 8))
-for i in range(bardata.shape[0]):
-    ax.bar(np.arange(6) + i * 0.35, bardata[i], 0.35, yerr=barse[i], capsize=10)
-plt.xticks(np.arange(6) + 0.35 / 2, ['PP', 'PEP 1', 'PEP N', 'PAP', 'HKS', 'HKS (No Cov.)'])
-plt.legend(['Sharpe Ratio', 'Information Ratio'])
-plt.savefig(figdir + 'Figure5.jpg')
-plt.close()
+barse = np.vstack([barse, np.hstack([PPewIRse, PEP1ewIRse, PEPNewIRse, PAPewIRse, FhksewIRse, FhksncewIRse])]).T
+
+## Plot bars
+b = errorbargrouped(bardata, barse, 2, True)
+
+## Set ticks
+plt.xticks(range(6), ['PP', 'PEP 1', 'PEP N', 'PAP', 'HKS', 'HKS (No Cov.)'])
+
+## Set font properties
+plt.rcParams['font.family'] = 'Times New Roman'
+plt.rcParams['font.size'] = 20
+
+## Add legend
+bar_colors =[
+    (0, 0.4470, 0.7410),   # Blue
+    (0.8500, 0.3250, 0.0980),   # Orange
+]
+legend_handles = [Patch(facecolor=color) for color in bar_colors]
+legend_labels = ['Sharpe Ratio', 'Information Ratio']
+b.gca().legend(legend_handles, legend_labels, prop={'size': 15})
+
+## Save the figure
+b.savefig(figdir + 'Figure5.jpg', dpi = 300)
+
+## Close the plot
+plt.close(b)
+
+
+print("Build Table 3")
+# Table 3: Ex Post Tangency Portfolios
+## Prepare data
+XXXraw = np.hstack([fffac, PTFS[0]["Fhis"].reshape(-1,1), Ftilew.reshape(-1, 1), PPew.reshape(-1, 1), PEP1ew.reshape(-1, 1), -PEPNew.reshape(-1, 1), PAPew.reshape(-1, 1)])
+XXX = (0.1 / np.sqrt(12)) * XXXraw / np.nanstd(XXXraw, axis=0, ddof=1)
+
+## compute tangency portfolios by Britten-Jones (1999) method (see Theorem 1, Corollary 1)
+### FF5
+bff, twtff, _ = linreg(y=np.ones(XXX.shape[0]), X=XXX[:,:5], intcpt=False)
+twff = bff / np.sum(bff) # tangency portfolio weights
+tpff = XXX[:,:5] @ twff # tangency portfolio excess return
+tpffSR = (np.nanmean(tpff) / np.nanstd(tpff, ddof=1))*np.sqrt(12) # annualized SR
+
+### FF5 + PP
+b, twt, _ = linreg(y=np.ones(XXX.shape[0]), X=XXX, intcpt=False)
+tw = b / np.sum(b) # tangency portfolio weights
+tp = XXX @ tw # tangency portfolio excess return
+tpSR = (np.nanmean(tp) / np.nanstd(tp, ddof=1))*np.sqrt(12) # annualized SR
+
+### Nonnegative FF5 + PP
+bns, twtns, _ = linreg(y=np.ones(XXX.shape[0]), X=XXX, intcpt=False, nnconstraint=True)
+twns = bns / np.sum(bns) # tangency portfolio weights
+tpns = XXX @ twns # tangency portfolio excess return
+tpnsSR = (np.nanmean(tpns) / np.nanstd(tpns, ddof=1))*np.sqrt(12) # annualized SR
+
+out = np.vstack((
+    np.hstack((twff, np.full(6, np.nan), tpffSR)),
+    np.hstack((tw, tpSR)),
+    np.hstack((twns, tpnsSR))
+)).T
+
+out_tstat = np.vstack((
+    np.hstack((twtff, np.full(6, np.nan), tpffSR)),
+    np.hstack((twt, tpSR)),
+    np.hstack((twtns, tpnsSR))
+)).T
+
+labs = ['Mkt-Rf', 'SMB', 'HML', 'RMW', 'CMA', 'Simple Factor', 'Hist. Mean Wts.', 'PP', 'PEP 1', '-1 x PEP N', 'PAP', 'Sharpe Ratio']
+tvalue =  np.vectorize(lambda x: f'{x:.2f}')(out)
+for j in range(tvalue.shape[0]-1):
+    for k in range(tvalue.shape[1]):
+        if np.abs(out_tstat[j,k]) >= 2.58:
+            tvalue[j,k] = tvalue[j,k] + '*'
+
+tabout = np.vstack((['Portfolio', 'FF5', 'FF5 + PP', 'Nonnegative FF5 + PP'], np.column_stack((labs, tvalue))))
+np.save(figdir + 'table3.npy', tabout)
+
+# Print the LaTeX table
+print(tabulate(tabout, headers='firstrow', tablefmt='latex'))
+
+# end notice
+print("End Script")

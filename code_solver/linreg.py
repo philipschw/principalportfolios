@@ -1,8 +1,9 @@
 # import packages
 import numpy as np
 from scipy.linalg import lstsq
+from scipy.optimize import nnls
 
-def linreg(y: np.ndarray, X: np.ndarray, intcpt: bool = True) -> tuple:
+def linreg(y: np.ndarray, X: np.ndarray, intcpt: bool = True, nnconstraint: bool = False) -> tuple:
     """
     Perform linear regression and calculate statistics.
 
@@ -27,7 +28,10 @@ def linreg(y: np.ndarray, X: np.ndarray, intcpt: bool = True) -> tuple:
         X = np.column_stack((np.ones(len(X)), X))
 
     # Perform linear regression
-    coefficients, _, _, _ = lstsq(X, y, lapack_driver='gelsd')
+    if nnconstraint:
+        coefficients, _ = nnls(X, y)
+    else:
+        coefficients, _, _, _ = lstsq(X, y, lapack_driver='gelsd')
 
     # Calculate R-squared
     ymean = np.mean(y)
