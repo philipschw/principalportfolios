@@ -1,1 +1,1 @@
-# from Figure6.m
+# This script creates Internet Appendix Figure 1. Originates from Figure6.m

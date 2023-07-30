@@ -1,2 +1,1 @@
-# from Figure7ab.m
-# FigureIA2 Panel C from code Figure7c.m is not available
+# This script creates Internet Appendix Figure 2 Panel A and Panel B. Originates from Figure7ab.m; FigureIA2 Panel C from code Figure7c.m is not available

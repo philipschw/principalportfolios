@@ -15,6 +15,8 @@ def linreg(y: np.ndarray, X: np.ndarray, intcpt: bool = True, nnconstraint: bool
     :type X:  numpy.ndarray
     :param intcpt: Whether to include the intercept term, defaults to True
     :type intcpt: bool, optional
+    :param nnconstraint: Whether to impose a non-negativity constraint on the estimated coefficeints, defaults to False
+    :type nnconstraint: bool, optional
     :return: A tuple consiting of the estimated coefficients of shape (p+1,), t-statistics of the coefficients of shape (p+1,), and the R-squared value of the regression model.
     :rtype: tuple
     """
