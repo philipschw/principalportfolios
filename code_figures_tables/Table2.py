@@ -257,3 +257,4 @@ np.save(figdir + 'table2.npy', tabout)
 print(tabulate(tabout, headers='firstrow', tablefmt='latex'))
 
 # End notice
+print("End Script")
