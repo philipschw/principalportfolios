@@ -3,7 +3,7 @@
 Python Code to compute the Figures and Tables in Kelly, Malamud and Pedersen (2022) [Principal Portfolios](https://doi.org/10.1111/jofi.13199).
 
 ## Data
-To run this code you have to create a `data` directory. The data provided by the authors can be found [here](https://onlinelibrary.wiley.com/action/downloadSupplement?doi=10.1111%2Fjofi.13199&file=jofi13199-sup-0002-ReplicationCode.zip). After downloading the files, load the data by running `LoadFamaFrenchData.ipynb`.
+To run this code you have to create a `data` and `data\Results` directory. The data provided by the authors can be found [here](https://onlinelibrary.wiley.com/action/downloadSupplement?doi=10.1111%2Fjofi.13199&file=jofi13199-sup-0002-ReplicationCode.zip). After downloading the files, load the data by running `LoadFamaFrenchData.ipynb`.
 
 ## Code:
 
