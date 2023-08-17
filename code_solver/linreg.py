@@ -60,3 +60,12 @@ def linreg(y: np.ndarray, X: np.ndarray, intcpt: bool = True, nnconstraint: bool
     ssres = np.sum(res ** 2)
     rsquared = 1 - (ssres / sstot)
 
+    # Calculate t-statistics
+    n = len(y)
+    p = X.shape[1] - 1
+    mse = ssres / (n - p - 1)
+    covmat = np.linalg.inv(X.T @ X) * mse
+    stderr = np.sqrt(np.diag(covmat))
+    tstat = coefficients / stderr
+
+    return coefficients, tstat, rsquared
